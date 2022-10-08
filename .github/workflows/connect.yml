@@ -1,0 +1,71 @@
+name: OpenWrt for R2S
+
+on:
+  push:
+    branches:
+      - master
+    paths:
+      - 'run.txt'
+      - '.github/workflows/connect.yml'
+
+env:
+  TZ: Asia/Hong_Kong
+
+jobs:
+  build:
+    runs-on: ubuntu-22.04
+    if: github.event.repository.owner.id == github.event.sender.id
+
+    steps:
+    - name: System
+      run: |
+        mkdir -p results/
+        cd results/
+        echo -e "Total CPU cores\t: $(nproc)" | tee -a CPU.txt
+        grep 'model name' /proc/cpuinfo | tee -a CPU.txt
+        free -h  | tee -a Memory.txt
+        uname -a | tee -a Kernel.txt
+        df -h | tee -a Disk.txt
+        [ -f /proc/version ]  && cat /proc/version  | tee -a Kernel.txt
+        [ -f /etc/issue.net ] && cat /etc/issue.net | tee -a Distro.txt
+        [ -f /proc/swaps ] && cat /proc/swaps | tee -a Swap.txt
+
+    - name: Software
+      env:
+        DEBIAN_FRONTEND: noninteractive
+      run: |
+        mkdir -p results/
+        cd results/
+        echo '======   Images   ======' | tee -a Docker.txt
+        sudo -E docker image ls         | tee -a Docker.txt
+        echo '====== Containers ======' | tee -a Docker.txt
+        sudo -E docker container ls     | tee -a Docker.txt
+        sudo -E snap list --all | tee -a Snap.txt
+        sudo -E apt-get -qq -y autoremove --purge
+        sudo -E apt list --installed | sed -E 's/\s+\[.*\]$//g' | tee -a Packages.txt
+        sudo -E find /usr/share/dotnet -type f -print      | tee -a _usr_share_dotnet.txt
+        sudo -E find /usr/share/swift -type f -print       | tee -a _usr_share_swift.txt
+        sudo -E find /usr/local/lib/android -type f -print | tee -a _usr_local_lib_android.txt
+        sudo -E find /etc/mysql -type f -print             | tee -a _etc_mysql.txt
+        sudo -E find /etc/php -type f -print               | tee -a _etc_php.txt
+
+    - name: Setup Debug Session
+      continue-on-error: true
+      timeout-minutes: 30
+      uses: csexton/debugger-action@master
+
+    - name: Compress
+      env:
+        DEBIAN_FRONTEND: noninteractive
+      run: |
+        sudo -E apt-get -qq -y install zstd
+        cd results/
+        tar -Oc *.txt | zstd --long -T0 -19 -o actions_info.tar.zst
+        rm -f *.txt
+
+    - name: Upload
+      uses: actions/upload-artifact@v3
+      if: ${{ success() }}
+      with:
+        name: actions_info.tar.zst
+        path: results/
