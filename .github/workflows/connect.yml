@@ -1,4 +1,4 @@
-name: OpenWrt for R2S
+name: MYTEST
 
 on:
   push:
