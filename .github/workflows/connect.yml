@@ -54,18 +54,9 @@ jobs:
       timeout-minutes: 30
       uses: csexton/debugger-action@master
 
-    - name: Compress
-      env:
-        DEBIAN_FRONTEND: noninteractive
-      run: |
-        sudo -E apt-get -qq -y install zstd
-        cd results/
-        tar -Oc *.txt | zstd --long -T0 -19 -o actions_info.tar.zst
-        rm -f *.txt
-
     - name: Upload
       uses: actions/upload-artifact@v3
       if: ${{ success() }}
       with:
-        name: actions_info.tar.zst
+        name: outputs
         path: results/
