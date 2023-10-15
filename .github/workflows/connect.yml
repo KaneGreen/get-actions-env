@@ -34,8 +34,11 @@ jobs:
       env:
         DEBIAN_FRONTEND: noninteractive
       run: |
+        pwd
         mkdir -p results/
         cd results/
+        echo '======     ID     ======' | tee -a Docker.txt
+        id                              | tee -a Docker.txt
         echo '======   Images   ======' | tee -a Docker.txt
         sudo -E docker image ls         | tee -a Docker.txt
         echo '====== Containers ======' | tee -a Docker.txt
